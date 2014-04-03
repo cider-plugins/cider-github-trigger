@@ -1,0 +1,77 @@
+{
+	"ImportPath": "github.com/paprikaci/paprika-github-trigger",
+	"GoVersion": "go1.2",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/goauth2/oauth",
+			"Comment": "weekly-43",
+			"Rev": "d4571a95014ff1fdd0055dc0f6b7e977a42b1e5a"
+		},
+		{
+			"ImportPath": "github.com/cider/go-cider/cider/services",
+			"Rev": "eee8f7e9d3b5f2feba2839ec0fb774b3a5c19aa8"
+		},
+		{
+			"ImportPath": "github.com/cider/go-cider/cider/transports/zmq3/logging",
+			"Rev": "eee8f7e9d3b5f2feba2839ec0fb774b3a5c19aa8"
+		},
+		{
+			"ImportPath": "github.com/cider/go-cider/cider/transports/zmq3/loop",
+			"Rev": "eee8f7e9d3b5f2feba2839ec0fb774b3a5c19aa8"
+		},
+		{
+			"ImportPath": "github.com/cider/go-cider/cider/transports/zmq3/pubsub",
+			"Rev": "eee8f7e9d3b5f2feba2839ec0fb774b3a5c19aa8"
+		},
+		{
+			"ImportPath": "github.com/cider/go-cider/cider/transports/zmq3/rpc",
+			"Rev": "eee8f7e9d3b5f2feba2839ec0fb774b3a5c19aa8"
+		},
+		{
+			"ImportPath": "github.com/cider/go-cider/cider/utils/codecs",
+			"Rev": "eee8f7e9d3b5f2feba2839ec0fb774b3a5c19aa8"
+		},
+		{
+			"ImportPath": "github.com/cihub/seelog",
+			"Comment": "go1.1-4-g6916c12",
+			"Rev": "6916c1271534ee68a12381356a0555075f6a6d76"
+		},
+		{
+			"ImportPath": "github.com/dmotylev/nutrition",
+			"Rev": "9a305a8ca773d89a1770aebc82efc6e1c7bbd4ea"
+		},
+		{
+			"ImportPath": "github.com/garyburd/redigo/redis",
+			"Rev": "deb35f4cb17e96db0da4c53e404e68cc7ba5f921"
+		},
+		{
+			"ImportPath": "github.com/google/go-github/github",
+			"Rev": "a4b0af1698ab1856de857fc8a85f2d38c1390d3a"
+		},
+		{
+			"ImportPath": "github.com/google/go-querystring/query",
+			"Rev": "ec0a78e0f4db229b7897be36596a8944230b857a"
+		},
+		{
+			"ImportPath": "github.com/paprikaci/paprika/data",
+			"Rev": "d332754f5f29d981e7e4aa2a01b5c5bceeb8ff06"
+		},
+		{
+			"ImportPath": "github.com/pebbe/zmq3",
+			"Rev": "864ffc49d2e319fbaec3d0b3290b34241c1653b1"
+		},
+		{
+			"ImportPath": "github.com/tchap/go-patricia/patricia",
+			"Rev": "f856ac5e417afc5c20b59996f80ea6b0dad3e29b"
+		},
+		{
+			"ImportPath": "github.com/ugorji/go/codec",
+			"Rev": "71c2886f5a673a35f909803f38ece5810165097b"
+		},
+		{
+			"ImportPath": "launchpad.net/goyaml",
+			"Comment": "51",
+			"Rev": "gustavo@niemeyer.net-20140305200416-7gh64vkcckre5mob"
+		}
+	]
+}

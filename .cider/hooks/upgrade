@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -xe
+
+# Clean the Godeps workspace first to make sure everything is rebuilt.
+pkg='./Godeps/_workspace/pkg'
+[ -d "$pkg" ] && rm -Rf "$pkg"
+
+# Build the executable.
+godep go install -v

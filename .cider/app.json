@@ -1,0 +1,20 @@
+{
+  "name": "paprika-github-trigger",
+  "version": "0.0.1",
+  "description": "Paprika <-> GitHub integration",
+  "variables": {
+    "CANONICAL_URL": {
+      "usage": "public URL this component will be accessible under"
+    },
+    "HTTP_LISTEN": {
+      "usage": "network address the HTTP server should listen on"
+    },
+    "GITHUB_TOKEN": {
+      "usage": "GitHub access token to use for updating commit statuses",
+      "secret": true
+    },
+    "REDIS_ADDRESS": {
+      "usage": "Redis network address to be used for storing build output"
+    }
+  }
+}
