@@ -45,7 +45,7 @@ func main() {
 		panic(err)
 	}
 	defer zmq.Term()
-	defer logger.Flush()
+	defer logger.Close()
 
 	if err := innerMain(logger); err != nil {
 		panic(err)
