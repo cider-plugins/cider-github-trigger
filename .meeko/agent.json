@@ -1,7 +1,7 @@
 {
-  "name": "paprika-github-trigger",
+  "name": "cider-github-builder",
   "version": "0.0.1",
-  "description": "Paprika <-> GitHub integration",
+  "description": "Build GitHub pull requests on Cider",
   "variables": {
     "CANONICAL_URL": {
       "usage": "public URL this component will be accessible under"
@@ -10,7 +10,7 @@
       "usage": "network address the HTTP server should listen on"
     },
     "GITHUB_TOKEN": {
-      "usage": "GitHub access token to use for updating commit statuses",
+      "usage": "GitHub access token for downloading cider.yml",
       "secret": true
     },
     "REDIS_ADDRESS": {
