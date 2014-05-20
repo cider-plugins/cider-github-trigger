@@ -12,6 +12,8 @@ results as well as the URL that can be used to access the output.
 
 This agent is rather usable, but the output event kind can change.
 
+The code is quite horrible and needs to be heavily refactored.
+
 ## License ##
 
 MIT, see the `LICENSE` file.
