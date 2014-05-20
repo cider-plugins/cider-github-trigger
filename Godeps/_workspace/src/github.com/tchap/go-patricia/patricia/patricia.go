@@ -65,8 +65,8 @@ func (trie *Trie) Set(key Prefix, item Item) {
 // nil interface as a valid value, even using zero value of any type is enough
 // to prevent this bad behaviour.
 func (trie *Trie) Get(key Prefix) (item Item) {
-	_, node, _, leftover := trie.findSubtree(key)
-	if len(leftover) != 0 {
+	_, node, found, leftover := trie.findSubtree(key)
+	if !found || len(leftover) != 0 {
 		return nil
 	}
 	return node.item
@@ -304,7 +304,7 @@ SplitPrefix:
 AppendChild:
 	// Keep appending children until whole prefix is inserted.
 	// This loop starts with empty node.prefix that needs to be filled.
-	for {
+	for len(key) != 0 {
 		child := NewTrie()
 		if len(key) <= MaxPrefixPerNode {
 			child.prefix = key

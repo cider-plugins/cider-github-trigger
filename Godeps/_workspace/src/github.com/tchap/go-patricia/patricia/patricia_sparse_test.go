@@ -81,6 +81,18 @@ func TestTrie_InsertVariousPrefixes(t *testing.T) {
 	}
 }
 
+func TestTrie_InsertAndMatchPrefix(t *testing.T) {
+	trie := NewTrie()
+	t.Log("INSERT prefix=by week")
+	trie.Insert(Prefix("by week"), 2)
+	t.Log("INSERT prefix=by")
+	trie.Insert(Prefix("by"), 1)
+
+	if !trie.Match(Prefix("by")) {
+		t.Error("MATCH prefix=by, expected=true, got=false")
+	}
+}
+
 func TestTrie_SetGet(t *testing.T) {
 	trie := NewTrie()
 
@@ -151,6 +163,25 @@ func TestTrie_Match(t *testing.T) {
 
 	if trie.Match(Prefix("random crap")) {
 		t.Errorf("Key that was not inserted matched: %q", "random crap")
+	}
+}
+
+func TestTrie_MatchFalsePositive(t *testing.T) {
+	trie := NewTrie()
+
+	if ok := trie.Insert(Prefix("A"), 1); !ok {
+		t.Fatal("INSERT prefix=A, item=1 not ok")
+	}
+
+	resultMatchSubtree := trie.MatchSubtree(Prefix("A extra"))
+	resultMatch := trie.Match(Prefix("A extra"))
+
+	if resultMatchSubtree != false {
+		t.Error("MatchSubtree returned false positive")
+	}
+
+	if resultMatch != false {
+		t.Error("Match returned false positive")
 	}
 }
 

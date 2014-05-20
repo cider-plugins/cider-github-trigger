@@ -55,8 +55,12 @@ func (r ReleaseAsset) String() string {
 // ListReleases lists the releases for a repository.
 //
 // GitHub API docs: http://developer.github.com/v3/repos/releases/#list-releases-for-a-repository
-func (s *RepositoriesService) ListReleases(owner, repo string) ([]RepositoryRelease, *Response, error) {
+func (s *RepositoriesService) ListReleases(owner, repo string, opt *ListOptions) ([]RepositoryRelease, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/releases", owner, repo)
+	u, err := addOptions(u, opt)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
@@ -144,8 +148,12 @@ func (s *RepositoriesService) DeleteRelease(owner, repo string, id int) (*Respon
 // ListReleaseAssets lists the release's assets.
 //
 // GitHub API docs : http://developer.github.com/v3/repos/releases/#list-assets-for-a-release
-func (s *RepositoriesService) ListReleaseAssets(owner, repo string, id int) ([]ReleaseAsset, *Response, error) {
+func (s *RepositoriesService) ListReleaseAssets(owner, repo string, id int, opt *ListOptions) ([]ReleaseAsset, *Response, error) {
 	u := fmt.Sprintf("repos/%s/%s/releases/%d/assets", owner, repo, id)
+	u, err := addOptions(u, opt)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
@@ -227,7 +235,7 @@ func (s *RepositoriesService) UploadReleaseAsset(owner, repo string, id int, opt
 		return nil, nil, err
 	}
 	if stat.IsDir() {
-		return nil, nil, errors.New("The asset to upload can't be a directory")
+		return nil, nil, errors.New("the asset to upload can't be a directory")
 	}
 
 	mediaType := mime.TypeByExtension(filepath.Ext(file.Name()))
