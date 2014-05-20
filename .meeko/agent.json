@@ -1,5 +1,5 @@
 {
-  "name": "cider-github-builder",
+  "name": "cider-github-trigger",
   "version": "0.0.1",
   "description": "Build GitHub pull requests on Cider",
   "variables": {

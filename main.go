@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 The cider-github-builder AUTHORS
+// Copyright (c) 2013-2014 The cider-github-trigger AUTHORS
 //
 // Use of this source code is governed by the MIT license
 // that can be found in the LICENSE file.

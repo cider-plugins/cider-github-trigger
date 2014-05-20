@@ -1,4 +1,4 @@
-# cider-github-builder #
+# cider-github-trigger #
 
 Build GitHub pull requests with Cider
 
@@ -7,6 +7,12 @@ builds of the relevant repositories. It saves the output into Redis. The output
 is then publicly accessible using a built-in web server. Once the build is
 finished, `cider.build.finished` event is emitted, which contains the build
 results as well as the URL that can be used to access the output.
+
+## Dependencies ##
+
+The following agents/plugins need to be installed for this plugin to work:
+
+* [meeko-collector-github](https://github.com/meeko-contrib/meeko-collector-github)
 
 ## Status ##
 
