@@ -1,3 +1,8 @@
+// Copyright (c) 2013-2014 The cider-github-builder AUTHORS
+//
+// Use of this source code is governed by the MIT license
+// that can be found in the LICENSE file.
+
 package main
 
 import (
@@ -14,70 +19,65 @@ import (
 	"sync"
 	"syscall"
 
-	// Paprika
-	"github.com/paprikaci/paprika/data"
-
 	// Cider
-	"github.com/cider/go-cider/cider/services/logging"
-	"github.com/cider/go-cider/cider/services/pubsub"
-	"github.com/cider/go-cider/cider/services/rpc"
-	zlogging "github.com/cider/go-cider/cider/transports/zmq3/logging"
-	zpubsub "github.com/cider/go-cider/cider/transports/zmq3/pubsub"
-	zrpc "github.com/cider/go-cider/cider/transports/zmq3/rpc"
+	"github.com/cider/cider/data"
+
+	// Meeko
+	"github.com/meeko/go-meeko/agent"
+	"github.com/meeko/go-meeko/meeko/services/pubsub"
+	"github.com/meeko/go-meeko/meeko/services/rpc"
 
 	// Others
 	"code.google.com/p/goauth2/oauth"
 	"github.com/garyburd/redigo/redis"
 	"github.com/google/go-github/github"
-	zmq "github.com/pebbe/zmq3"
 )
 
 const RedisOutputSequenceKey = "next-build-id"
 
 func main() {
-	// Initialise the Logging service.
-	logger, err := logging.NewService(func() (logging.Transport, error) {
-		factory := zlogging.NewTransportFactory()
-		factory.MustReadConfigFromEnv("CIDER_ZMQ3_LOGGING_").MustBeFullyConfigured()
-		return factory.NewTransport(os.Getenv("CIDER_ALIAS"))
-	})
-	if err != nil {
-		panic(err)
-	}
-	defer zmq.Term()
-	defer logger.Close()
+	// Make sure the Meeko agent is terminated properly.
+	defer agent.Terminate()
 
-	if err := innerMain(logger); err != nil {
-		panic(err)
+	// Run the main function.
+	if err := run(); err != nil {
+		os.Exit(1)
 	}
 }
 
-func innerMain(logger *logging.Service) error {
-	// Make sure the the required environment variables are set.
+func run() error {
+	// Some userful shortcuts.
+	var (
+		log      = agent.Logging
+		eventBus = agent.PubSub
+		executor = agent.RPC
+	)
+
+	// Parse the environment and make sure all the environment variables are set.
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return logger.Critical("GITHUB_TOKEN is not set")
+		return log.Critical("GITHUB_TOKEN is not set")
 	}
 	canonicalURL := os.Getenv("CANONICAL_URL")
 	if canonicalURL == "" {
-		return logger.Critical("CANONICAL_URL is not set")
+		return log.Critical("CANONICAL_URL is not set")
 	}
 	if _, err := url.Parse(canonicalURL); err != nil {
-		return logger.Critical(err)
+		return log.Critical(err)
 	}
 	listenAddress := os.Getenv("HTTP_LISTEN")
 	if listenAddress == "" {
-		return logger.Critical("HTTP_LISTEN is not set")
+		return log.Critical("HTTP_LISTEN is not set")
 	}
 	redisAddress := os.Getenv("REDIS_ADDRESS")
 	if redisAddress == "" {
-		return logger.Critical("REDIS_ADDRESS is not set")
+		return log.Critical("REDIS_ADDRESS is not set")
 	}
 
 	// Connect to Redis.
 	redisConn, err := redis.Dial("tcp", redisAddress)
 	if err != nil {
-		return logger.Critical(err)
+		return log.Critical(err)
 	}
 	var redisConnMu sync.Mutex
 
@@ -87,76 +87,28 @@ func innerMain(logger *logging.Service) error {
 	}
 	gh := github.NewClient(t.Client())
 
-	// Initialise the PubSub service.
-	eventBus, err := pubsub.NewService(func() (pubsub.Transport, error) {
-		factory := zpubsub.NewTransportFactory()
-		factory.MustReadConfigFromEnv("CIDER_ZMQ3_PUBSUB_").MustBeFullyConfigured()
-		return factory.NewTransport(os.Getenv("CIDER_ALIAS"))
-	})
-	if err != nil {
-		return logger.Critical(err)
-	}
-	defer func() {
-		select {
-		case <-eventBus.Closed():
-			goto Wait
-		default:
-		}
-		if err := eventBus.Close(); err != nil {
-			logger.Critical(err)
-		}
-	Wait:
-		if err := eventBus.Wait(); err != nil {
-			logger.Critical(err)
-		}
-	}()
-
-	// Initialise the RPC service.
-	executor, err := rpc.NewService(func() (rpc.Transport, error) {
-		factory := zrpc.NewTransportFactory()
-		factory.MustReadConfigFromEnv("CIDER_ZMQ3_RPC_").MustBeFullyConfigured()
-		return factory.NewTransport(os.Getenv("CIDER_ALIAS"))
-	})
-	if err != nil {
-		return logger.Critical(err)
-	}
-	defer func() {
-		select {
-		case <-executor.Closed():
-			goto Wait
-		default:
-		}
-		if err := executor.Close(); err != nil {
-			logger.Critical(err)
-		}
-	Wait:
-		if err := executor.Wait(); err != nil {
-			logger.Critical(err)
-		}
-	}()
-
 	// Start catching signals.
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
 
-	// Trigger Paprika build on github.pull_request.
+	// Trigger Cider build on github.pull_request.
 	if _, err := eventBus.Subscribe("github.pull_request", func(event pubsub.Event) {
 		// Unmarshal the event object. Once into a struct to be accessed directly,
 		// once for passing it on in build events.
 		var body PullRequestEvent
 		if err := event.Unmarshal(&body); err != nil {
-			logger.Warn(err)
+			log.Warn(err)
 			return
 		}
 
 		// Only continue if the pull request sources were modified.
 		pr := body.PullRequest
 		if body.Action != "opened" && body.Action != "synchronized" {
-			logger.Infof("Skipping the build, pull request %v not updated", pr.HTMLURL)
+			log.Infof("Skipping the build, pull request %v not updated", pr.HTMLURL)
 			return
 		}
 
-		logger.Infof("Preparing to build %v", pr.HTMLURL)
+		log.Infof("Preparing to build %v", pr.HTMLURL)
 
 		// Unmarshal the whole pull request object as well so that we can later
 		// pass it on in the build events.
@@ -164,25 +116,25 @@ func innerMain(logger *logging.Service) error {
 			PullRequest map[string]interface{} `codec:"pull_request"`
 		}
 		if err := event.Unmarshal(&prMap); err != nil {
-			logger.Warn(err)
+			log.Warn(err)
 			return
 		}
 
-		// Emit paprika.build.enqueued at the beginning.
+		// Emit cider.build.enqueued at the beginning.
 		if len(prMap.PullRequest) == 0 {
-			logger.Error("Invalid github.pull_request event")
+			log.Error("Invalid github.pull_request event")
 			return
 		}
 
-		logger.Infof("Emitting paprika.build.enqueued for pull request %v", pr.HTMLURL)
-		if err := eventBus.Publish("paprika.build.enqueued", &BuildEnqueuedEvent{
+		log.Infof("Emitting cider.build.enqueued for pull request %v", pr.HTMLURL)
+		if err := eventBus.Publish("cider.build.enqueued", &BuildEnqueuedEvent{
 			PullRequest: prMap.PullRequest,
 		}); err != nil {
-			logger.Error(err)
+			log.Error(err)
 			return
 		}
 
-		// Emit paprika.build.finished.{success|failure|error} on return.
+		// Emit cider.build.finished.{success|failure|error} on return.
 		var (
 			call       *rpc.RemoteCall
 			err        error
@@ -221,29 +173,29 @@ func innerMain(logger *logging.Service) error {
 				finishedEvent.Error = buildError.Error()
 			}
 
-			kind := "paprika.build.finished." + result
-			logger.Infof("Emitting %v for pull request %v", kind, pr.HTMLURL)
+			kind := "cider.build.finished." + result
+			log.Infof("Emitting %v for pull request %v", kind, pr.HTMLURL)
 			err = eventBus.Publish(kind, finishedEvent)
 			if err != nil {
-				logger.Error(err)
+				log.Error(err)
 				return
 			}
 		}()
 
-		// Fetch paprika.yml first.
-		logger.Debugf("Fetching %v for pull request %v", data.ConfigFileName, pr.HTMLURL)
+		// Fetch cider.yml first.
+		log.Debugf("Fetching %v for pull request %v", data.ConfigFileName, pr.HTMLURL)
 		head := pr.Head
 		opts := &github.RepositoryContentGetOptions{head.SHA}
 		content, _, _, err := gh.Repositories.GetContents(head.Owner.Login,
 			head.Repository.Name, data.ConfigFileName, opts)
 		if err != nil {
-			logger.Warn(err)
+			log.Warn(err)
 			buildError = err
 			return
 		}
 		if content == nil {
 			err = fmt.Errorf("%v is not a regular file", data.ConfigFileName)
-			logger.Info(err)
+			log.Info(err)
 			buildError = err
 			return
 		}
@@ -251,15 +203,15 @@ func innerMain(logger *logging.Service) error {
 		// Decode the config file.
 		decodedContent, err := content.Decode()
 		if err != nil {
-			logger.Warn(err)
+			log.Warn(err)
 			buildError = err
 			return
 		}
 
-		logger.Debugf("Parsing %v for pull request %v", data.ConfigFileName, pr.HTMLURL)
+		log.Debugf("Parsing %v for pull request %v", data.ConfigFileName, pr.HTMLURL)
 		config, err := data.ParseConfig(decodedContent)
 		if err != nil {
-			logger.Info(err)
+			log.Info(err)
 			buildError = err
 			return
 		}
@@ -268,7 +220,7 @@ func innerMain(logger *logging.Service) error {
 		method, args, err := data.ParseArgs(config.Slave.Label, config.Repository.URL,
 			config.Script.Path, config.Script.Runner, config.Script.Env)
 		if err != nil {
-			logger.Info(err)
+			log.Info(err)
 			buildError = err
 			return
 		}
@@ -279,27 +231,27 @@ func innerMain(logger *logging.Service) error {
 		// right now, so it is fine, but not good to depend on that.
 		call.Stdout = &output
 		call.Stderr = &output
-		logger.Debugf("Dispatching build request for pull request %v", pr.HTMLURL)
+		log.Debugf("Dispatching build request for pull request %v", pr.HTMLURL)
 		err = call.Execute()
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			return
 		}
 		if rc := call.ReturnCode(); rc > 1 {
-			logger.Errorf("Paprika returned an error return code: %v", rc)
+			log.Errorf("Cider returned an error return code: %v", rc)
 			return
 		}
 
 		// Save the output.
-		logger.Debugf("Saving build output for pull request %v", pr.HTMLURL)
+		log.Debugf("Saving build output for pull request %v", pr.HTMLURL)
 		redisConnMu.Lock()
 		err = redisConn.Err()
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			redisConn.Close()
 			redisConn, err = redis.Dial("tcp", redisAddress)
 			if err != nil {
-				logger.Error(err)
+				log.Error(err)
 				return
 			}
 		}
@@ -307,17 +259,17 @@ func innerMain(logger *logging.Service) error {
 
 		outputKey, err = redis.Int64(redisConn.Do("INCR", RedisOutputSequenceKey))
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			return
 		}
 
 		_, err = redisConn.Do("SET", outputKey, output.Bytes())
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			return
 		}
 	}); err != nil {
-		return logger.Critical(err)
+		return log.Critical(err)
 	}
 
 	// Set up the HTTP server that serves the build output.
@@ -340,11 +292,11 @@ func innerMain(logger *logging.Service) error {
 
 		err = redisConn.Err()
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			redisConn.Close()
 			redisConn, err = redis.Dial("tcp", redisAddress)
 			if err != nil {
-				logger.Error(err)
+				log.Error(err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
@@ -376,12 +328,9 @@ func innerMain(logger *logging.Service) error {
 	// Start processing signals, block until crashed or terminated.
 	select {
 	case err := <-serverErrCh:
-		return logger.Critical(err)
-	case <-eventBus.Closed():
-		return eventBus.Wait()
-	case <-executor.Closed():
-		return executor.Wait()
+		return log.Critical(err)
 	case <-signalCh:
+		log.Info("Signal received, exiting...")
+		return nil
 	}
-	return nil
 }
